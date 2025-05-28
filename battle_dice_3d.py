@@ -6,6 +6,7 @@ from direct.gui.DirectGui import DirectButton, OnscreenText
 #import pybullet as p
 import random
 import sys
+import os
 
 class Dice3DApp(ShowBase):
     def __init__(self):
@@ -134,8 +135,26 @@ class Dice3DApp(ShowBase):
             np = self.render.attachNewNode(node)
             np.setPos(-2 + i*2, 0, 2)
             self.bullet_world.attachRigidBody(node)
-            model = self.loader.loadModel("models/box")
-            model.setScale(1)
+            # Try to load an STL file for the die model, fallback to box if not found
+            stl_path = "models/die.stl"
+            if os.path.exists(stl_path):
+                model = self.loader.loadModel(stl_path)
+                # Auto-scale STL so its bounding box fits a 1x1x1 cube (like the default box)
+                bounds = model.getTightBounds()
+                if bounds is not None:
+                    min_pt, max_pt = bounds
+                    size = max_pt - min_pt
+                    max_dim = max(size[0], size[1], size[2])
+                    if max_dim > 0:
+                        scale = 1.0 / max_dim
+                        model.setScale(scale)
+                    else:
+                        model.setScale(1)
+                else:
+                    model.setScale(1)
+            else:
+                model = self.loader.loadModel("models/box")
+                model.setScale(1)
             model.reparentTo(np)
             self.dice_nodes.append(node)
             self.dice_models.append(np)
