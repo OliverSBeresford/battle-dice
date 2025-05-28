@@ -107,10 +107,21 @@ class BattleDiceGUI(QMainWindow):
     def init_physics(self):
         self.space = pymunk.Space()
         self.space.gravity = (0.0, 900.0)
-        # Add floor
+        # Add floor (ground)
         floor = pymunk.Segment(self.space.static_body, (0, 390), (800, 390), 5)
         floor.friction = 0.8
+        floor.elasticity = 0.6  # Make ground bouncy
         self.space.add(floor)
+        # Add left wall
+        left_wall = pymunk.Segment(self.space.static_body, (0, 0), (0, 400), 5)
+        left_wall.friction = 0.8
+        left_wall.elasticity = 0.6
+        self.space.add(left_wall)
+        # Add right wall
+        right_wall = pymunk.Segment(self.space.static_body, (800, 0), (800, 400), 5)
+        right_wall.friction = 0.8
+        right_wall.elasticity = 0.6
+        self.space.add(right_wall)
 
     def roll_dice(self):
         self.clear_dice()
@@ -122,11 +133,21 @@ class BattleDiceGUI(QMainWindow):
             y = 50
             body.position = (x, y)
             body.angle = random.uniform(0, 3.14)
-            body.apply_impulse_at_local_point((random.uniform(-100, 100), random.uniform(200, 400)))
+            # Give dice a strong upward and sideways impulse for bounciness
+            body.apply_impulse_at_local_point((random.uniform(-120, 120), random.uniform(350, 500)))
             shape = pymunk.Poly.create_box(body, (60, 60))
-            shape.friction = 0.7
+            shape.friction = 0.9
+            shape.elasticity = 0.5  # More realistic bounce
+            shape.collision_type = 1
+            shape.filter = pymunk.ShapeFilter(group=1)
             self.space.add(body, shape)
             self.dice_bodies.append((body, sides))
+        # Add top wall to prevent dice from going off the top
+        if not hasattr(self, 'top_wall'):
+            self.top_wall = pymunk.Segment(self.space.static_body, (0, 0), (800, 0), 5)
+            self.top_wall.friction = 0.8
+            self.top_wall.elasticity = 0.5
+            self.space.add(self.top_wall)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
         self.timer.start(16)
@@ -137,16 +158,31 @@ class BattleDiceGUI(QMainWindow):
     def update_physics(self):
         self.space.step(1/60.0)
         for i, (body, sides) in enumerate(self.dice_bodies):
+            # Clamp dice to stay within the screen horizontally
+            if body.position.x < 30:
+                body.position = (30, body.position.y)
+                body.velocity = (abs(body.velocity.x), body.velocity.y)
+            elif body.position.x > 770:
+                body.position = (770, body.position.y)
+                body.velocity = (-abs(body.velocity.x), body.velocity.y)
+            # Clamp dice to stay within the screen vertically
+            if body.position.y < 30:
+                body.position = (body.position.x, 30)
+                body.velocity = (body.velocity.x, abs(body.velocity.y))
             pos = body.position
             self.dice_items[i].setPos(pos.x, pos.y)
             self.dice_items[i].setRotation(body.angle * 180 / 3.14159)
-        # Stop after a while
-        if all(abs(body.velocity.y) < 5 for body, _ in self.dice_bodies):
+        # Only stop if all dice are on the ground (not wall) and moving slowly
+        def is_on_ground(body):
+            # Consider on ground if y is near floor and not near left/right wall
+            return body.position.y > 370 and 30 < body.position.x < 770
+        if all(is_on_ground(body) and abs(body.velocity.y) < 5 and abs(body.velocity.x) < 5 for body, _ in self.dice_bodies):
             self.timer.stop()
             self.show_dice_results()
 
     def show_dice_results(self):
         # Assign random value for each die (simulate physics result)
+        self.dice_results = []  # Reset to correct length
         for i, (body, sides) in enumerate(self.dice_bodies):
             val = random.randint(1, sides)
             self.dice_results.append(val)
@@ -169,17 +205,25 @@ class BattleDiceGUI(QMainWindow):
         if self.rerolls_left <= 0 or not self.selected_dice:
             QMessageBox.information(self, "No rerolls", "No rerolls left or no dice selected.")
             return
+        if len(self.dice_results) != len(self.dice_types):
+            self.dice_results = [1 for _ in self.dice_types]
         for idx in self.selected_dice:
-            val = random.randint(1, self.dice_types[idx])
-            self.dice_results[idx] = val
-            self.dice_labels[idx].setText(f"d{self.dice_types[idx]}: {val}")
+            body, sides = self.dice_bodies[idx]
+            # Respawn die at top and give new momentum
+            body.position = (150 + idx*200 + random.randint(-20, 20), 50)
+            body.velocity = (0, 0)
+            body.angle = random.uniform(0, 3.14)
+            body.angular_velocity = random.uniform(-5, 5)
+            body.apply_impulse_at_local_point((random.uniform(-120, 120), random.uniform(350, 500)))
         self.rerolls_left -= 1
         self.info_label.setText(f"Target: {self.target} | Rerolls left: {self.rerolls_left}")
         self.selected_dice.clear()
         for item in self.dice_items:
             item.setOpacity(1.0)
-        if self.rerolls_left == 0:
-            self.reroll_button.setEnabled(False)
+        self.reroll_button.setEnabled(False)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_physics)
+        self.timer.start(16)
 
     def clear_dice(self):
         for item in self.dice_items:
