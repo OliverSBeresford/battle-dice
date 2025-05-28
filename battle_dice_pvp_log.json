@@ -1,0 +1,303 @@
+{
+  "collection": "A",
+  "rounds": [
+    {
+      "round": 1,
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              4,
+              4,
+              11
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 19,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 19
+      },
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              4,
+              1,
+              12
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 17,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 17
+      },
+      "winner": "Draw"
+    },
+    {
+      "round": 2,
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              7,
+              11
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 21,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 14
+      },
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              1,
+              2,
+              11
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 14,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 21
+      },
+      "winner": "Player 1"
+    },
+    {
+      "round": 3,
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              2,
+              2,
+              12
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 16,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 16
+      },
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              7,
+              7
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 17,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 17
+      },
+      "winner": "Draw"
+    },
+    {
+      "round": 4,
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              8,
+              2
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 13,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 16
+      },
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              2,
+              8,
+              6
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 16,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 13
+      },
+      "winner": "Player 2"
+    },
+    {
+      "round": 5,
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              4,
+              2,
+              4
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 10,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 10
+      },
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              3,
+              10
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 16,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 16
+      },
+      "winner": "Player 1"
+    },
+    {
+      "round": 6,
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              4,
+              11
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 18,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 16
+      },
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              2,
+              7,
+              7
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 16,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 18
+      },
+      "winner": "Draw"
+    },
+    {
+      "round": 7,
+      "Player 1": {
+        "log": [
+          {
+            "roll": [
+              2,
+              6,
+              2
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 10,
+            "rerolls_left": 3
+          }
+        ],
+        "final_sum": 10
+      },
+      "Player 2": {
+        "log": [
+          {
+            "roll": [
+              3,
+              2,
+              1
+            ],
+            "dice": [
+              4,
+              8,
+              12
+            ],
+            "sum": 6,
+            "rerolls_left": 2
+          }
+        ],
+        "final_sum": 6
+      },
+      "winner": "Player 1"
+    }
+  ],
+  "final_score": {
+    "Player 1": 9,
+    "Player 2": 5
+  }
+}
