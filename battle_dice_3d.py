@@ -1,258 +1,155 @@
-from direct.showbase.ShowBase import ShowBase
-from direct.showbase.ShowBaseGlobal import globalClock
-from panda3d.core import AmbientLight, DirectionalLight, LVector3, LPoint3, TextNode, TransformState, WindowProperties
-from panda3d.bullet import BulletWorld, BulletRigidBodyNode, BulletBoxShape
-from direct.gui.DirectGui import DirectButton, OnscreenText
-#import pybullet as p
-import random
-import sys
 import os
+os.environ["PANDA3D_DISABLE_SHADERS"] = "1"
+from ursina import *
+import random
 
-class Dice3DApp(ShowBase):
-    def __init__(self):
-        super().__init__()
-        self.disableMouse()
-        # Bird's eye view: camera above, looking straight down
-        self.setBackgroundColor(0.1, 0.1, 0.15)
-        props = WindowProperties()
-        props.setSize(1400, 1000)
-        self.win.requestProperties(props)
-        self.camera.setPos(0, 0, 30)
-        self.camera.setHpr(0, -90, 0)
+# Dice sides map
+DICE_SIDES = {
+    'd4': 4,
+    'd6': 6,
+    'd8': 8,
+    'd10': 10,
+    'd12': 12,
+    'd20': 20,
+}
 
-        # Lighting
-        ambient = AmbientLight('ambient')
-        ambient.setColor((0.5, 0.5, 0.5, 1))
-        self.render.setLight(self.render.attachNewNode(ambient))
-        dlight = DirectionalLight('dlight')
-        dlight.setColor((0.7, 0.7, 0.7, 1))
-        dlnp = self.render.attachNewNode(dlight)
-        dlnp.setHpr(0, -60, 0)
-        self.render.setLight(dlnp)
+# Parse input like: "d6 2 d20 1"
+def parse_input(input_str):
+    tokens = input_str.lower().split()
+    result = []
+    for i in range(0, len(tokens), 2):
+        die_type = tokens[i]
+        count = int(tokens[i+1])
+        if die_type not in DICE_SIDES:
+            raise ValueError(f"Unsupported die type: {die_type}")
+        result.extend([die_type] * count)
+    return result
 
-        # Physics world
-        self.bullet_world = BulletWorld()
-        self.bullet_world.setGravity(LVector3(0, 0, -9.81))
+class Die(Entity):
+    def __init__(self, die_type='d6', **kwargs):
+        super().__init__(
+            model='cube',
+            collider='box',
+            texture='white_cube',
+            scale=0.5,
+            color=color.random_color(),
+            **kwargs
+        )
+        self.die_type = die_type
+        self.sides = DICE_SIDES[die_type]
+        self.velocity = Vec3(0, 0, 0)
+        self.angular_velocity = Vec3(0, 0, 0)
+        self.grounded = False
 
-        # Floor
-        floor_shape = BulletBoxShape(LVector3(8, 8, 0.5))
-        floor_node = BulletRigidBodyNode('Floor')
-        floor_node.addShape(floor_shape)
-        floor_np = self.render.attachNewNode(floor_node)
-        floor_np.setPos(0, 0, 0)  # Set Z to 0 so the top of the floor is at z=0.5
-        floor_node.setMass(0)
-        floor_node.setFriction(2.0)
-        floor_node.setRestitution(0.15)
-        self.bullet_world.attachRigidBody(floor_node)
-        # Add a visible floor quad
-        from panda3d.core import CardMaker
-        cm = CardMaker('floor-card')
-        cm.setFrame(-8, 8, -8, 8)
-        floor_card = self.render.attachNewNode(cm.generate())
-        floor_card.setPos(0, 0, 0.01)  # Slightly above the physics floor to avoid z-fighting
-        floor_card.setHpr(0, 0, 0)
-        floor_card.setColor(1, 1, 1, 1)  # White floor
-        floor_card.setTransparency(True)
-        floor_card.setBin('background', 0)
-        floor_card.setDepthWrite(False)
+    def roll(self):
+        self.velocity = Vec3(
+            random.uniform(-3, 3),
+            random.uniform(5, 10),
+            random.uniform(-3, 3)
+        )
+        self.angular_velocity = Vec3(
+            random.uniform(-180, 180),
+            random.uniform(-180, 180),
+            random.uniform(-180, 180)
+        )
+        self.grounded = False
 
-        # Adjust wall positions and sizes to fully enclose the box
-        wall_thickness = 1.0  # Thicker walls for better collision
-        wall_height = 10
-        wall_length = 16
-        # Left wall
-        left_wall_shape = BulletBoxShape(LVector3(wall_thickness / 2, wall_length / 2, wall_height))
-        left_wall_node = BulletRigidBodyNode('LeftWall')
-        left_wall_node.addShape(left_wall_shape)
-        left_wall_node.setMass(0)
-        left_wall_node.setFriction(2.0)
-        left_wall_node.setRestitution(0.15)
-        left_wall_np = self.render.attachNewNode(left_wall_node)
-        left_wall_np.setPos(-8 + wall_thickness / 2, 0, wall_height)
-        self.bullet_world.attachRigidBody(left_wall_node)
-        # Right wall
-        right_wall_shape = BulletBoxShape(LVector3(wall_thickness / 2, wall_length / 2, wall_height))
-        right_wall_node = BulletRigidBodyNode('RightWall')
-        right_wall_node.addShape(right_wall_shape)
-        right_wall_node.setMass(0)
-        right_wall_node.setFriction(2.0)
-        right_wall_node.setRestitution(0.15)
-        right_wall_np = self.render.attachNewNode(right_wall_node)
-        right_wall_np.setPos(8 - wall_thickness / 2, 0, wall_height)
-        self.bullet_world.attachRigidBody(right_wall_node)
-        # Top wall
-        top_wall_shape = BulletBoxShape(LVector3(wall_length / 2, wall_thickness / 2, wall_height))
-        top_wall_node = BulletRigidBodyNode('TopWall')
-        top_wall_node.addShape(top_wall_shape)
-        top_wall_node.setMass(0)
-        top_wall_node.setFriction(2.0)
-        top_wall_node.setRestitution(0.15)
-        top_wall_np = self.render.attachNewNode(top_wall_node)
-        top_wall_np.setPos(0, 8 - wall_thickness / 2, wall_height)
-        self.bullet_world.attachRigidBody(top_wall_node)
-        # Bottom wall
-        bottom_wall_shape = BulletBoxShape(LVector3(wall_length / 2, wall_thickness / 2, wall_height))
-        bottom_wall_node = BulletRigidBodyNode('BottomWall')
-        bottom_wall_node.addShape(bottom_wall_shape)
-        bottom_wall_node.setMass(0)
-        bottom_wall_node.setFriction(2.0)
-        bottom_wall_node.setRestitution(0.15)
-        bottom_wall_np = self.render.attachNewNode(bottom_wall_node)
-        bottom_wall_np.setPos(0, -8 + wall_thickness / 2, wall_height)
-        self.bullet_world.attachRigidBody(bottom_wall_node)
+    def update(self):
+        if self.grounded:
+            return
 
-        # Dice
-        self.dice_types = [6, 6, 6]  # Use cubes for simplicity
-        self.dice_nodes = []
-        self.dice_models = []
-        self.dice_results = [1 for _ in self.dice_types]
-        self.selected_dice = set()
-        self.rerolls_left = 3
+        # Apply motion
+        self.position += self.velocity * time.dt
+        self.rotation_x += self.angular_velocity.x * time.dt
+        self.rotation_y += self.angular_velocity.y * time.dt
+        self.rotation_z += self.angular_velocity.z * time.dt
 
-        self.create_dice()
+        # Gravity
+        self.velocity.y -= 9.8 * time.dt
 
-        # GUI
-        self.info_text = OnscreenText(text=f"Rerolls left: {self.rerolls_left}", pos=(0, 0.9), scale=0.07, fg=(1,1,1,1))
-        self.roll_button = DirectButton(text="Roll Dice", scale=0.07, pos=(0,0,0.8), command=self.roll_dice)
-        self.reroll_button = DirectButton(text="Reroll Selected", scale=0.07, pos=(0,0,0.7), command=self.reroll_selected)
-        self.reroll_button["state"] = "disabled"
+        # Ground collision
+        if self.y <= 0.25:
+            self.y = 0.25
 
-        # Mouse picking
-        self.accept("mouse1", self.on_mouse_click)
+            # Check if close to a face-aligned orientation (within 10 degrees of 0, 90, 180, 270, 360)
+            def is_face_aligned(angle):
+                return any(abs((angle % 90) - x) < 10 or abs((angle % 90) - x + 90) < 10 for x in [0, 90])
 
-        # Task for physics update
-        self.taskMgr.add(self.update, "update")
-
-    def create_dice(self):
-        for i, sides in enumerate(self.dice_types):
-            shape = BulletBoxShape(LVector3(0.5, 0.5, 0.5))
-            node = BulletRigidBodyNode(f"Dice{i}")
-            node.setMass(100.0)
-            node.addShape(shape)
-            node.setFriction(2.0)
-            # Set restitution: less bouncy with each other, more with ground
-            node.setRestitution(0.03)  # Default for dice
-            np = self.render.attachNewNode(node)
-            np.setPos(-2 + i*2, 0, 2)
-            self.bullet_world.attachRigidBody(node)
-            # Try to load an STL file for the die model, fallback to box if not found
-            stl_path = "models/die.stl"
-            if os.path.exists(stl_path):
-                model = self.loader.loadModel(stl_path)
-                # Auto-scale STL so its bounding box fits a 1x1x1 cube (like the default box)
-                bounds = model.getTightBounds()
-                if bounds is not None:
-                    min_pt, max_pt = bounds
-                    size = max_pt - min_pt
-                    max_dim = max(size[0], size[1], size[2])
-                    if max_dim > 0:
-                        scale = 1.0 / max_dim
-                        model.setScale(scale)
-                    else:
-                        model.setScale(1)
-                else:
-                    model.setScale(1)
+            if self.velocity.length() < 0.5 and self.angular_velocity.length() < 20:
+                # Snap and zero only axes that are close to face-aligned
+                for axis, av_axis in zip(['rotation_x', 'rotation_y', 'rotation_z'], ['x', 'y', 'z']):
+                    angle = getattr(self, axis)
+                    nearest = round(angle / 90) * 90
+                    if abs((angle - nearest) % 360) < 10:
+                        setattr(self, axis, nearest % 360)
+                        setattr(self.angular_velocity, av_axis, 0)
+                self.velocity = Vec3(0, 0, 0)
+                # If all angular velocities are now 0, mark as grounded
+                if self.angular_velocity.length() < 1e-2:
+                    self.angular_velocity = Vec3(0, 0, 0)
+                    self.grounded = True
             else:
-                model = self.loader.loadModel("models/box")
-                model.setScale(1)
-            model.reparentTo(np)
-            self.dice_nodes.append(node)
-            self.dice_models.append(np)
+                # Only dampen angular velocity for axes that are close to face-aligned
+                for axis, av_axis in zip(['rotation_x', 'rotation_y', 'rotation_z'], ['x', 'y', 'z']):
+                    angle = getattr(self, axis)
+                    nearest = round(angle / 90) * 90
+                    if abs((angle - nearest) % 360) < 10:
+                        setattr(self.angular_velocity, av_axis, getattr(self.angular_velocity, av_axis) * 0.5)
+                self.velocity.y *= -0.2
+                self.velocity.x *= 0.8
+                self.velocity.z *= 0.8
 
-    def roll_dice(self):
-        # All dice spawn close together, but with more spacing
-        side = random.choice([-1, 1])
-        base_x = side * (8 + random.uniform(0, 2))
-        base_y = -6
-        for i, node in enumerate(self.dice_nodes):
-            # Larger random offset for each die
-            x = base_x + random.uniform(-1.2, 1.2)
-            y = base_y + random.uniform(-1.2, 1.2)
-            node.setTransform(TransformState.makePosHpr(
-                LVector3(x, y, 2 + random.uniform(0, 0.3)),
-                LVector3(random.uniform(-20, 20), random.uniform(-20, 20), random.uniform(-20, 20))
-            ))
-            node.clearForces()
-            # Always launch horizontally toward center (x=0), with slight upward velocity
-            dir_to_center = -side  # If on left, side=-1, so dir_to_center=1 (right); if on right, side=1, so dir_to_center=-1 (left)
-            node.setLinearVelocity(LVector3(
-                dir_to_center * random.uniform(4, 6),  # always toward center
-                random.uniform(3, 6),
-                random.uniform(0.3, 1.0)
-            ))
-            node.setAngularVelocity(LVector3(0, 0, 0))
-        self.rerolls_left = 3
-        self.selected_dice.clear()
-        self.info_text.setText(f"Rerolls left: {self.rerolls_left}")
-        self.reroll_button["state"] = "disabled"
+    def get_result(self):
+        return random.randint(1, self.sides)  # Placeholder
 
-    def reroll_selected(self):
-        if self.rerolls_left <= 0 or not self.selected_dice:
-            return
-        side = random.choice([-1, 1])
-        base_x = side * (8 + random.uniform(0, 2))
-        base_y = -6
-        for idx in self.selected_dice:
-            x = base_x + random.uniform(-1.2, 1.2)
-            y = base_y + random.uniform(-1.2, 1.2)
-            node = self.dice_nodes[idx]
-            node.setTransform(TransformState.makePosHpr(
-                LVector3(x, y, 2 + random.uniform(0, 0.3)),
-                LVector3(random.uniform(-20, 20), random.uniform(-20, 20), random.uniform(-20, 20))
-            ))
-            node.clearForces()
-            dir_to_center = -side
-            node.setLinearVelocity(LVector3(
-                dir_to_center * random.uniform(4, 6),
-                random.uniform(3, 6),
-                random.uniform(0.3, 1.0)
-            ))
-            node.setAngularVelocity(LVector3(0, 0, 0))
-        self.rerolls_left -= 1
-        self.info_text.setText(f"Rerolls left: {self.rerolls_left}")
-        self.selected_dice.clear()
-        if self.rerolls_left <= 0:
-            self.reroll_button["state"] = "disabled"
+class DiceRoller:
+    def __init__(self, dice_list):
+        self.dice = []
+        self.dice_list = dice_list
+        self.result_shown = False
+        self.texts = []
 
-    def on_mouse_click(self):
-        if not self.mouseWatcherNode.hasMouse():
-            return
-        mpos = self.mouseWatcherNode.getMouse()
-        picker_ray = self.camLens.extrude(mpos, LPoint3(), LPoint3())
-        from panda3d.core import CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue
-        picker = CollisionRay()
-        picker.setFromLens(self.camNode, mpos.getX(), mpos.getY())
-        picker_node = CollisionNode('mouseRay')
-        picker_node.addSolid(picker)
-        picker_np = self.camera.attachNewNode(picker_node)
-        handler = CollisionHandlerQueue()
-        traverser = CollisionTraverser()
-        traverser.addCollider(picker_np, handler)
-        for i, np in enumerate(self.dice_models):
-            np.setTag("dice", str(i))
-        traverser.traverse(self.render)
-        if handler.getNumEntries() > 0:
-            handler.sortEntries()
-            picked = handler.getEntry(0).getIntoNodePath()
-            if picked.hasNetTag("dice"):
-                idx = int(picked.getNetTag("dice"))
-                if idx in self.selected_dice:
-                    self.selected_dice.remove(idx)
-                    self.dice_models[idx].setColor(1,1,1,1)
-                else:
-                    self.selected_dice.add(idx)
-                    self.dice_models[idx].setColor(0.5,1,0.5,1)
-                if self.selected_dice and self.rerolls_left > 0:
-                    self.reroll_button["state"] = "normal"
-                else:
-                    self.reroll_button["state"] = "disabled"
-        picker_np.removeNode()
+        # Ground plane
+        self.ground = Entity(model='plane', collider='box', scale=20, texture='white_cube', texture_scale=(10, 10))
+        DirectionalLight(y=2, z=3, shadows=True)
+        Sky()
 
-    def update(self, task):
-        dt = globalClock.getDt()
-        self.bullet_world.doPhysics(dt, 10, 1.0/180.0)
-        return task.cont
+        # Camera: isometric angle
+        camera.position = (0, 6, -6)
+        camera.look_at(Vec3(0, 0, 0))
+        camera.fov = 90
 
-if __name__ == "__main__":
-    app = Dice3DApp()
+        # Spawn dice
+        for i, die_type in enumerate(self.dice_list):
+            die = Die(die_type=die_type, position=(i * 0.7 - len(self.dice_list) * 0.35, 3, 0))
+            die.roll()
+            self.dice.append(die)
+
+    def update(self):
+        for die in self.dice:
+            die.update()
+
+        if not self.result_shown and all(die.grounded for die in self.dice):
+            self.result_shown = True
+            total = 0
+            for die in self.dice:
+                value = die.get_result()
+                total += value
+                t = Text(
+                    text=f'{die.die_type.upper()}: {value}',
+                    position=Vec3(*die.position) + Vec3(0, 1, 0),
+                    scale=1.5,
+                    origin=(0, 0),
+                    color=color.black
+                )
+                self.texts.append(t)
+            print(f"Total: {total}")
+
+# === Main ===
+if __name__ == '__main__':
+    input_str = input("Enter dice to roll (e.g., 'd6 2 d20 1'): ")
+    dice_to_roll = parse_input(input_str)
+    app = Ursina()
+    roller = DiceRoller(dice_to_roll)
+    app.update = roller.update
     app.run()
