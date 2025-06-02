@@ -66,35 +66,45 @@ class Die(Entity):
 
         # Gravity
         self.velocity.y -= 9.8 * time.dt
+        # Gravity torque: only apply to x and z axes (tilt), not y (spin)
+        torque_strength = 0.5
+        def angle_to_nearest_90(angle):
+            return min(abs((angle % 360) % 90), abs(90 - (angle % 90)))
+        tx = angle_to_nearest_90(self.rotation_x)
+        tz = angle_to_nearest_90(self.rotation_z)
+        sign_x = -1 if (self.rotation_x % 180) > 90 else 1
+        sign_z = -1 if (self.rotation_z % 180) > 90 else 1
+        self.angular_velocity.x += sign_x * tx * torque_strength * time.dt
+        self.angular_velocity.z += sign_z * tz * torque_strength * time.dt
+        # Do not apply gravity torque to self.angular_velocity.y
 
         # Ground collision
         if self.y <= 0.25:
             self.y = 0.25
 
-            # Check if close to a face-aligned orientation (within 10 degrees of 0, 90, 180, 270, 360)
-            def is_face_aligned(angle):
-                return any(abs((angle % 90) - x) < 10 or abs((angle % 90) - x + 90) < 10 for x in [0, 90])
-
+            # Only x and z axes need to be face-aligned for the die to be flat
             if self.velocity.length() < 0.5 and self.angular_velocity.length() < 20:
-                # Snap and zero only axes that are close to face-aligned
-                for axis, av_axis in zip(['rotation_x', 'rotation_y', 'rotation_z'], ['x', 'y', 'z']):
+                for axis, av_axis in zip(['rotation_x', 'rotation_z'], ['x', 'z']):
                     angle = getattr(self, axis)
                     nearest = round(angle / 90) * 90
                     if abs((angle - nearest) % 360) < 10:
                         setattr(self, axis, nearest % 360)
                         setattr(self.angular_velocity, av_axis, 0)
                 self.velocity = Vec3(0, 0, 0)
-                # If all angular velocities are now 0, mark as grounded
-                if self.angular_velocity.length() < 1e-2:
-                    self.angular_velocity = Vec3(0, 0, 0)
+                # If both x and z angular velocities are now 0, mark as grounded (y can still spin)
+                if abs(self.angular_velocity.x) < 1e-2 and abs(self.angular_velocity.z) < 1e-2:
+                    self.angular_velocity.x = 0
+                    self.angular_velocity.z = 0
+                    self.angular_velocity.y *= 0.5  # Dampen y spin
                     self.grounded = True
             else:
-                # Only dampen angular velocity for axes that are close to face-aligned
-                for axis, av_axis in zip(['rotation_x', 'rotation_y', 'rotation_z'], ['x', 'y', 'z']):
+                # Only dampen angular velocity for x and z axes that are close to face-aligned
+                for axis, av_axis in zip(['rotation_x', 'rotation_z'], ['x', 'z']):
                     angle = getattr(self, axis)
                     nearest = round(angle / 90) * 90
                     if abs((angle - nearest) % 360) < 10:
-                        setattr(self.angular_velocity, av_axis, getattr(self.angular_velocity, av_axis) * 0.5)
+                        # Flip direction of angular velocity for bounce
+                        setattr(self.angular_velocity, av_axis, -getattr(self.angular_velocity, av_axis) * 0.5)
                 self.velocity.y *= -0.2
                 self.velocity.x *= 0.8
                 self.velocity.z *= 0.8

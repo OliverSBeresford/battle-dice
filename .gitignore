@@ -3,3 +3,4 @@ __pycache__
 *.pyc
 cannon.min.js
 three.min.js
+node_modules
