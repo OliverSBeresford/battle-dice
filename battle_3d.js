@@ -55,11 +55,11 @@ function startDiceUI(collectionKey) {
         smooth: "https://www.unpkg.com/@3d-dice/theme-smooth@0.2.1",
       },
       offscreen: true,
-      scale: 10,
+      scale: 15,
       // physics settings that must be set - defaults are buggy
       throwForce: 5,
-      gravity: 2,
-      mass: 2,
+      gravity: 3,
+      mass: 1,
       spinForce: 10,
     });
   }
