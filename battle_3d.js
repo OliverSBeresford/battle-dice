@@ -40,6 +40,9 @@ document.getElementById("chooseB").onclick = () => startDiceUI("B");
 
 function startDiceUI(collectionKey) {
   currentCollection = collectionKey;
+  // Update dice results text immediately to show which collection is active
+  const resultsDiv = document.getElementById('dice-results');
+  resultsDiv.textContent = `Selected: Collection ${collectionKey}`;
   document.getElementById("collection-select").style.display = "none";
   document.getElementById("dice-ui").style.display = "block";
   // Create DiceBox only after #dice-box exists
@@ -69,6 +72,9 @@ function startDiceUI(collectionKey) {
       rollCurrentCollection();
     });
   } else {
+    // Clear the dice results text when returning home
+    document.getElementById('dice-results').textContent = `Selected: Collection ${collectionKey}`;
+    // If already initialized, just roll the current collection';
     rollCurrentCollection();
   }
 }
@@ -188,7 +194,8 @@ document.addEventListener("click", (e) => {
     document.getElementById("collection-select").style.display = "block";
     Box.clear();
     document.getElementById('reroll-buttons').innerHTML = '';
-    updateDiceResults();
+    // Clear the dice results text when returning home
+    document.getElementById('dice-results').textContent = '';
     rerollingDice.clear();
     rollingAll = false;
     setMainButtonsDisabled(false);
