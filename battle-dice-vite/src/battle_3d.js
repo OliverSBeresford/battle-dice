@@ -5,6 +5,11 @@
 */
 
 import DiceBox from "@3d-dice/dice-box";
+import { startDiceUI } from './diceBoxManager.js';
+import { updateDiceResults, updateRerollButtons, setMainButtonsDisabled } from './ui.js';
+import { colors, get_random, setupGlobalErrorHandler } from './utils.js';
+
+setupGlobalErrorHandler();
 
 const collections = {
     "B": ["1d6", "1d10", "1d20"],
@@ -39,190 +44,35 @@ app.innerHTML = `
     </div>
 `;
 
-document.getElementById("chooseA").onclick = () => startDiceUI("A");
-document.getElementById("chooseB").onclick = () => startDiceUI("B");
+document.getElementById("chooseA").onclick = () => startDiceUI("A", setMainButtonsDisabled, (a, b) => updateRerollButtons(setMainButtonsDisabled, updateDiceResults), updateDiceResults);
+document.getElementById("chooseB").onclick = () => startDiceUI("B", setMainButtonsDisabled, (a, b) => updateRerollButtons(setMainButtonsDisabled, updateDiceResults), updateDiceResults);
 
-function startDiceUI(collectionKey) {
-    currentCollection = collectionKey;
-    const resultsDiv = document.getElementById('dice-results');
-    resultsDiv.textContent = `Selected: Collection ${collectionKey}`;
-    document.getElementById("collection-select").style.display = "none";
-    document.getElementById("dice-ui").style.display = "block";
-    if (!Box) {
-        Box = new DiceBox({
-            assetPath: "/assets/dice-box/", // Vite serves public/ as root
-            container: "#dice-box",
-            theme: "theme-smooth",
-            themeColor: get_random(colors),
-            offscreen: true,
-            scale: 13,
-            throwForce: 5,
-            gravity: 3,
-            mass: 1,
-            spinForce: 10,
-        });
-    }
-    if (!Box._initialized) {
-        Box.init().then(() => {
-            Box._initialized = true;
-            rollCurrentCollection();
-        });
-    } else {
-        document.getElementById('dice-results').textContent = `Selected: Collection ${collectionKey}`;
-        rollCurrentCollection();
-    }
-}
-
-function updateDiceResults() {
-    const resultsDiv = document.getElementById('dice-results');
-    if (!window.lastRollResults || !Array.isArray(window.lastRollResults) || window.lastRollResults.length === 0) {
-        resultsDiv.textContent = '';
-        return;
-    }
-    let total = 0;
-    let details = window.lastRollResults.map((die, idx) => {
-        const value = die.value || die.result || die.total || 0;
-        total += value;
-        return `${die.sides}-sided: <b>${value}</b>`;
-    }).join(' &nbsp; | &nbsp; ');
-    resultsDiv.innerHTML = `Dice: ${details} &nbsp; &nbsp; <span style='font-weight:bold;'>Total: ${total}</span>`;
-}
-
-let rerollingDice = new Set();
-let rollingAll = false;
-
-function setMainButtonsDisabled(disabled) {
-    ["rollem", "reroll", "back"].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.disabled = disabled;
-    });
-}
-
-function updateRerollButtons() {
-    const rerollDiv = document.getElementById('reroll-buttons');
-    rerollDiv.innerHTML = '';
-    if (!window.lastRollResults || !Array.isArray(window.lastRollResults)) return;
-    window.lastRollResults.forEach((die, idx) => {
-        const btn = document.createElement('button');
-        btn.textContent = `Reroll ${die.sides}-sided Die #${idx+1}`;
-        btn.disabled = rollingAll || rerollingDice.has(idx);
-        btn.onclick = () => {
-            rerollingDice.add(idx);
-            btn.disabled = true;
-            setMainButtonsDisabled(true);
-            Box.reroll(die, { remove: true, newStartPoint: true })
-                .then((rerolledDiceArr) => {
-                    if (window.lastRollResults && Array.isArray(window.lastRollResults)) {
-                        window.lastRollResults[idx] = rerolledDiceArr[0];
-                    }
-                    updateRerollButtons();
-                    updateDiceResults();
-                })
-                .finally(() => {
-                    rerollingDice.delete(idx);
-                    if (rerollingDice.size === 0 && !rollingAll) setMainButtonsDisabled(false);
-                    updateRerollButtons();
-                });
-        };
-        rerollDiv.appendChild(btn);
-    });
-    updateDiceResults();
-}
-
-function rollCurrentCollection() {
-    Box.clear();
-    rollingAll = true;
-    setMainButtonsDisabled(true);
-    updateRerollButtons();
-    Box.roll(collections[currentCollection])
-        .then((rollResults) => {
-            window.lastRollResults = rollResults;
-            updateRerollButtons();
-            updateDiceResults();
-        })
-        .finally(() => {
-            rollingAll = false;
-            setMainButtonsDisabled(false);
-            updateRerollButtons();
-        });
-}
+// Button event listeners for roll, reroll, back
+// These must use the modular functions and pass the correct parameters
 
 document.addEventListener("click", (e) => {
     if (e.target.id === "rollem") {
-        rollingAll = true;
-        setMainButtonsDisabled(true);
-        updateRerollButtons();
-        Box.roll(collections[currentCollection], {
-            themeColor: get_random(colors),
-        }).then((rollResults) => {
-            window.lastRollResults = rollResults;
-            updateRerollButtons();
-            updateDiceResults();
-        }).finally(() => {
-            rollingAll = false;
-            setMainButtonsDisabled(false);
-            updateRerollButtons();
+        // Roll all dice
+        import('./diceBoxManager.js').then(({ rollCurrentCollection }) => {
+            rollCurrentCollection(setMainButtonsDisabled, (a, b) => updateRerollButtons(setMainButtonsDisabled, updateDiceResults), updateDiceResults);
         });
     } else if (e.target.id === "reroll") {
-        rollingAll = true;
-        setMainButtonsDisabled(true);
-        updateRerollButtons();
-        Box.roll(collections[currentCollection], {
-            themeColor: get_random(colors),
-        }).then((rollResults) => {
-            window.lastRollResults = rollResults;
-            updateRerollButtons();
-            updateDiceResults();
-        }).finally(() => {
-            rollingAll = false;
-            setMainButtonsDisabled(false);
-            updateRerollButtons();
+        // Reroll all dice
+        import('./diceBoxManager.js').then(({ rollCurrentCollection }) => {
+            rollCurrentCollection(setMainButtonsDisabled, (a, b) => updateRerollButtons(setMainButtonsDisabled, updateDiceResults), updateDiceResults);
         });
     } else if (e.target.id === "back") {
         document.getElementById("dice-ui").style.display = "none";
         document.getElementById("collection-select").style.display = "block";
-        Box.clear();
+        import('./diceBoxManager.js').then(({ getBox }) => {
+            const Box = getBox();
+            if (Box) Box.clear();
+        });
         document.getElementById('reroll-buttons').innerHTML = '';
         document.getElementById('dice-results').textContent = '';
-        rerollingDice.clear();
-        rollingAll = false;
+        import('./ui.js').then(({ resetRerollingDice }) => {
+            resetRerollingDice();
+        });
         setMainButtonsDisabled(false);
     }
 });
-
-const colors = [
-    "#348888",
-    "#22BABB",
-    "#9EF8EE",
-    "#FA7F08",
-    "#F24405",
-    "#F25EB0",
-    "#B9BF04",
-    "#F2B705",
-    "#F27405",
-    "#F23005",
-];
-
-function get_random(list) {
-    return list[Math.floor(Math.random() * list.length)];
-}
-
-window.addEventListener('error', function(e) {
-    const errDiv = document.createElement('div');
-    errDiv.style = 'color:red;white-space:pre-wrap;';
-    errDiv.textContent = 'JS Error: ' + e.message + '\n' + (e.error && e.error.stack ? e.error.stack : '');
-    document.body.appendChild(errDiv);
-});
-
-function setButtonsDisabled(disabled) {
-    ["rollem", "reroll", "back"].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.disabled = disabled;
-    });
-    const rerollDiv = document.getElementById('reroll-buttons');
-    if (rerollDiv) {
-        Array.from(rerollDiv.querySelectorAll('button')).forEach(btn => {
-            btn.disabled = disabled;
-        });
-    }
-}
