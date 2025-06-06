@@ -55,7 +55,7 @@ function startDiceUI(collectionKey) {
       theme: "theme-smooth",
       themeColor: get_random(colors),
       offscreen: true,
-      scale: 15,
+      scale: 13,
       throwForce: 5,
       gravity: 3,
       mass: 1,
