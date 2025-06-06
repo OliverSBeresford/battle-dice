@@ -1,30 +1,31 @@
+/*
+Order: 1. Reset/box-model/html/body, 2. Layout containers, 3. Main UI, 4. Components, 5. Utility, 6. Media queries
+*/
+
+html,
+body {
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
-
     color-scheme: light dark;
     color: rgba(255, 255, 255, 0.87);
     background-color: #242424;
-
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-    font-weight: 500;
-    color: #646cff;
-    text-decoration: inherit;
-}
-a:hover {
-    color: #535bf2;
-}
-
-h1 {
-    font-size: 3.2em;
-    line-height: 1.1;
 }
 
 #app {
@@ -32,6 +33,22 @@ h1 {
     margin: 0 auto;
     padding: 2rem;
     text-align: center;
+}
+
+/* Main UI */
+h1 {
+    font-size: 3.2em;
+    line-height: 1.1;
+}
+
+/* Components */
+a {
+    font-weight: 500;
+    color: #646cff;
+    text-decoration: inherit;
+}
+a:hover {
+    color: #535bf2;
 }
 
 .logo {
@@ -74,31 +91,6 @@ button:focus-visible {
     outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-    :root {
-        color: #213547;
-        background-color: #ffffff;
-    }
-    a:hover {
-        color: #747bff;
-    }
-    button {
-        background-color: #f9f9f9;
-    }
-}
-html,
-body {
-    font-family: Avenir, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    position: relative;
-}
-
 #dice-box {
     position: relative;
     box-sizing: border-box;
@@ -120,5 +112,19 @@ body {
     transform: translateX(-50%);
     z-index: 1;
     cursor: pointer;
+}
+
+/* Utility/Media Queries */
+@media (prefers-color-scheme: light) {
+    :root {
+        color: #213547;
+        background-color: #ffffff;
+    }
+    a:hover {
+        color: #747bff;
+    }
+    button {
+        background-color: #f9f9f9;
+    }
 }
 
