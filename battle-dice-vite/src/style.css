@@ -104,7 +104,7 @@ body {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  background-image: url(/public/assets/woodgrain2.jpg);
+  background-image: url(/assets/images/wood-bg.jpg);
   background-size: cover;
 }
 
