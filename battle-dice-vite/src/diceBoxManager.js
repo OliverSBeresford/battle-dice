@@ -1,91 +1,86 @@
 // diceBoxManager.js
-// Usage:
-//   import { startDiceUI, rollCurrentCollection, getBox, getCurrentCollection, isRollingAll } from './diceBoxManager.js';
-//
-//   startDiceUI(collectionKey, setMainButtonsDisabled, updateRerollButtons, updateDiceResults);
-//     - Initializes and shows the dice UI for the given collectionKey (e.g. 'A' or 'B').
-//     - Requires you to pass UI update functions: setMainButtonsDisabled, updateRerollButtons, updateDiceResults.
-//
-//   rollCurrentCollection(setMainButtonsDisabled, updateRerollButtons, updateDiceResults);
-//     - Rolls the dice for the current collection. Also requires UI update functions.
-//
-//   getBox();
-//     - Returns the DiceBox instance (for advanced control or rerolling individual dice).
-//
-//   getCurrentCollection();
-//     - Returns the current collection key (e.g. 'A' or 'B').
-//
-//   isRollingAll();
-//     - Returns true if a roll is in progress.
-
 import DiceBox from "@3d-dice/dice-box";
 import { colors, get_random } from './utils.js';
 
-let Box = null;
-let currentCollection = null;
-let rollingAll = false;
-let collections = {
-    "B": ["1d6", "1d10", "1d20"],
-    "A": ["1d4", "1d8", "1d12"]
-};
-
-export function startDiceUI(collectionKey, setMainButtonsDisabled, updateRerollButtons, updateDiceResults) {
-    currentCollection = collectionKey;
-    const resultsDiv = document.getElementById('dice-results');
-    resultsDiv.textContent = `Selected: Collection ${collectionKey}`;
-    document.getElementById("collection-select").style.display = "none";
-    document.getElementById("dice-ui").style.display = "block";
-    if (!Box) {
-        Box = new DiceBox({
-            assetPath: "/assets/dice-box/", // Vite serves public/ as root
-            container: "#dice-box",
-            theme: "theme-dice-of-rolling",
-            themeColor: get_random(colors),
-            offscreen: true,
-            scale: 13,
-            throwForce: 5,
-            gravity: 3,
-            mass: 1,
-            spinForce: 10,
-        });
+class DiceBoxManager {
+    constructor() {
+        this.Box = null;
+        this.currentCollection = null;
+        this.rollingAll = false;
+        this.collections = {
+            "B": ["1d6", "1d10", "1d20"],
+            "A": ["1d4", "1d8", "1d12"]
+        };
+        this.lastRollResults = [];
     }
-    if (!Box._initialized) {
-        Box.init().then(() => {
-            Box._initialized = true;
-            rollCurrentCollection(setMainButtonsDisabled, updateRerollButtons, updateDiceResults);
-        });
-    } else {
-        document.getElementById('dice-results').textContent = `Selected: Collection ${collectionKey}`;
-        rollCurrentCollection(setMainButtonsDisabled, updateRerollButtons, updateDiceResults);
+
+    startDiceUI(collectionKey, uiManager) {
+        this.currentCollection = collectionKey;
+        uiManager.setResultsText(`Selected: Collection ${collectionKey}`);
+        uiManager.showDiceUI();
+        if (!this.Box) {
+            this.Box = new DiceBox({
+                assetPath: "/assets/dice-box/",
+                container: "#dice-box",
+                theme: "theme-smooth",
+                themeColor: get_random(colors),
+                offscreen: true,
+                scale: 13,
+                throwForce: 5,
+                gravity: 3,
+                mass: 1,
+                spinForce: 10,
+            });
+        }
+        if (!this.Box._initialized) {
+            this.Box.init().then(() => {
+                this.Box._initialized = true;
+                this.rollCurrentCollection(uiManager);
+            });
+        } else {
+            this.rollCurrentCollection(uiManager);
+        }
+    }
+
+    rollCurrentCollection(uiManager) {
+        if (!this.Box) return;
+        this.Box.clear();
+        this.rollingAll = true;
+        uiManager.setMainButtonsDisabled(true);
+        uiManager.updateRerollButtons(this);
+        this.Box.roll(this.collections[this.currentCollection])
+            .then((rollResults) => {
+                this.lastRollResults = rollResults;
+                uiManager.updateRerollButtons(this);
+                uiManager.updateDiceResults(this);
+            })
+            .finally(() => {
+                this.rollingAll = false;
+                uiManager.setMainButtonsDisabled(false);
+                uiManager.updateRerollButtons(this);
+            });
+    }
+
+    getBox() {
+        return this.Box;
+    }
+
+    getCurrentCollection() {
+        return this.currentCollection;
+    }
+
+    isRollingAll() {
+        return this.rollingAll;
+    }
+
+    getLastRollResults() {
+        return this.lastRollResults;
+    }
+
+    clear() {
+        if (this.Box) this.Box.clear();
+        this.lastRollResults = [];
     }
 }
 
-export function rollCurrentCollection(setMainButtonsDisabled, updateRerollButtons, updateDiceResults) {
-    Box.clear();
-    rollingAll = true;
-    setMainButtonsDisabled(true);
-    updateRerollButtons();
-    Box.roll(collections[currentCollection])
-        .then((rollResults) => {
-            window.lastRollResults = rollResults;
-            updateRerollButtons();
-            updateDiceResults();
-        })
-        .finally(() => {
-            rollingAll = false;
-            setMainButtonsDisabled(false);
-            updateRerollButtons();
-        });
-}
-
-export function getBox() {
-    return Box;
-}
-
-export function getCurrentCollection() {
-    return currentCollection;
-}
-
-export function isRollingAll() {
-    return rollingAll;
-}
+export const diceBoxManager = new DiceBoxManager();
