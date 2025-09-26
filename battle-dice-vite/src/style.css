@@ -114,6 +114,25 @@ button:focus-visible {
     cursor: pointer;
 }
 
+#reroll-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Add spacing between main control buttons */
+#rollem, #reroll, #back {
+    margin-right: 5px;
+}
+#back {
+    margin-right: 0;
+}
+
+#chooseA {
+    margin-right: 5px;
+}
+
 /* Utility/Media Queries */
 @media (prefers-color-scheme: light) {
     :root {
