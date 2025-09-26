@@ -38,6 +38,9 @@ class DiceBoxManager {
                 this.rollCurrentCollection(uiManager);
             });
         } else {
+            this.Box.updateConfig({
+                themeColor: get_random(colors)
+            })
             this.rollCurrentCollection(uiManager);
         }
     }
